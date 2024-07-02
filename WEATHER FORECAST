@@ -1,0 +1,83 @@
+import requests
+import speech_recognition as sr
+import pyttsx3
+
+def get_weather(city):
+    API_KEY = "d27125a06eb9c5604d8cbbc482d4a17b"  
+    BASE_URL = "http://api.openweathermap.org/data/2.5/weather"
+    params = {
+        'q': city,
+        'appid': API_KEY,
+        'units': 'metric'
+    }
+    response = requests.get(BASE_URL, params=params)
+    if response.status_code == 200:
+        data = response.json()
+        return data
+    else:
+        return None
+
+def display_weather(data):
+    if data:
+        city = data['name']
+        temperature = data['main']['temp']
+        description = data['weather'][0]['description']
+        humidity = data['main']['humidity']
+        wind_speed = data['wind']['speed']
+
+        weather_info = (f"City: {city}\n"
+                        f"Temperature: {temperature}°C\n"
+                        f"Weather: {description}\n"
+                        f"Humidity: {humidity}%\n"
+                        f"Wind Speed: {wind_speed} m/s")
+
+        print(weather_info)
+        speak_weather(weather_info)
+    else:
+        error_message = "City not found or API request failed."
+        print(error_message)
+        speak_weather(error_message)
+
+def speak_weather(text):
+    engine = pyttsx3.init()
+    engine.say(text)
+    engine.runAndWait()
+
+def get_city_name():
+    recognizer = sr.Recognizer()
+    with sr.Microphone() as source:
+        print("Please say the city name (you have 5 seconds):")
+        recognizer.adjust_for_ambient_noise(source, duration=1)  
+        try:
+            audio = recognizer.listen(source, timeout=5)
+            city = recognizer.recognize_google(audio)
+            print(f"You said: {city}")
+            speak_weather(f"You said: {city}")
+            return city.lower()
+        except sr.WaitTimeoutError:
+            error_message = "Listening timed out while waiting for phrase to start."
+            speak_weather(error_message)
+            return None
+        except sr.UnknownValueError:
+            error_message = "Sorry, I did not understand the city name."
+            speak_weather(error_message)
+            return None
+        except sr.RequestError:
+            error_message = "Sorry, my speech service is down."
+            speak_weather(error_message)
+            return None
+
+def main():
+    city = ''
+    while True:
+        city = get_city_name()
+        print(city)
+        if city == 'stop program':
+            speak_weather("thank you")
+            break
+        else:
+            weather_data = get_weather(city.split(' ')[-1])
+            display_weather(weather_data)
+
+if _name_ == '_main_':
+    main()
